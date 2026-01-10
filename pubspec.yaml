@@ -1,0 +1,61 @@
+name: ipukonnect
+description: "A notification hub for IPU students with PDF support."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.10.4 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  mongo_dart: ^0.10.5
+  shared_preferences: ^2.2.2
+  shimmer: ^3.0.0
+  file_picker: ^10.3.8
+  flutter_pdfview: ^1.4.3
+  path_provider: ^2.1.5
+  permission_handler: ^12.0.1
+  image_picker: ^1.0.4
+  flutter_dotenv: ^5.1.0
+  # Keep dotted_border only if you fixed the Admin Screen code
+  dotted_border: ^3.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/app_icon.png"
+  min_sdk_android: 21 # android min sdk min:16, default 21
+  web:
+    generate: true
+    image_path: "assets/app_icon.png"
+    background_color: "#hex_code"
+    theme_color: "#hex_code"
+  windows:
+    generate: true
+    image_path: "assets/app_icon.png"
+    icon_size: 48 # min:48, max:256, default: 48
+  macos:
+    generate: true
+    image_path: "assets/app_icon.png"
+
+flutter:
+  uses-material-design: true
+
+  # --- ASSETS SECTION ADDED BELOW ---
+  assets:
+    - .env
+    - assets/ipu_logo.png
+    - assets/bpit_logo.png
+    - assets/app_icon.png
+    - assets/dhundo_icon.png
+    # If you have more logos, you can just list the folder like this:
+    # - assets/
