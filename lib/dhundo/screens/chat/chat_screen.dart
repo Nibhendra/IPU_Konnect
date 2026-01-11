@@ -174,7 +174,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           decoration: BoxDecoration(
                             color: isMe
                                 ? AppTheme.primaryPurple
-                                : Colors.grey[200],
+                                : Colors.deepPurple[50],
                             borderRadius: BorderRadius.only(
                               topLeft: const Radius.circular(16),
                               topRight: const Radius.circular(16),

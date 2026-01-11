@@ -135,10 +135,15 @@ class _DhundoManagementTabState extends State<DhundoManagementTab> {
       itemBuilder: (context, index) {
         final item = listings[index];
         return Card(
-          elevation: 2,
-          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 4,
+          shadowColor: Colors.black12,
+          margin: const EdgeInsets.only(bottom: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: AppTheme.primaryPurple.withOpacity(0.1),
+              width: 1,
+            ),
           ),
           child: ListTile(
             leading: item.imageUrl != null

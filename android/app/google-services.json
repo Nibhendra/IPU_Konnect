@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "95341557404",
+    "project_id": "ipu-konnect",
+    "storage_bucket": "ipu-konnect.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:95341557404:android:d703ae3775c25a1aea5f59",
+        "android_client_info": {
+          "package_name": "com.example.ipukonnect"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "95341557404-k2flm73sho227l31odiogidkmt2jaa93.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.ipukonnect",
+            "certificate_hash": "c78b789406054a7c3ac961e3a8c9ddbb57b954de"
+          }
+        },
+        {
+          "client_id": "95341557404-pa9p03srcon6p14vetvi1tnn1arsi79s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAeaoRStYsStiO0BihGJHbz87lNgmv8hjg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "95341557404-pa9p03srcon6p14vetvi1tnn1arsi79s.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

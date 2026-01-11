@@ -1,6 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart';
 import 'package:mongo_dart/mongo_dart.dart';
+import '../dhundo/services/notification_service.dart';
 
 class MongoDatabase {
   static Db? db;
@@ -144,6 +145,23 @@ class MongoDatabase {
     }
   }
 
+  static Future<bool> deleteConversation(String conversationId) async {
+    try {
+      await _ensureConnected();
+      final conversations = db?.collection('conversations');
+      await conversations?.remove(where.id(ObjectId.parse(conversationId)));
+      // Optional: Delete messages associated with this conversation?
+      // For now, keeping messages might be safer or inconsistent.
+      // Let's also delete messages to keep DB clean.
+      final messages = db?.collection('messages');
+      await messages?.remove(where.eq('conversationId', conversationId));
+      return true;
+    } catch (e) {
+      if (kDebugMode) print("Delete Conversation Error: $e");
+      return false;
+    }
+  }
+
   static Future<List<Map<String, dynamic>>> getUserConversations(
     String email,
   ) async {
@@ -229,6 +247,23 @@ class MongoDatabase {
         where.id(ObjectId.parse(conversationId)),
         updateModifier,
       );
+
+      // Send Push Notification
+      if (otherUser != null) {
+        final recipient = await userCollection?.findOne(
+          where.eq('email', otherUser),
+        );
+        final token = recipient?['fcmToken'];
+        if (token != null) {
+          await NotificationService.sendPushNotification(
+            token: token,
+            title: "New Message",
+            body: imageUrl != null ? "📷 Sent an image" : content,
+            data: {"type": "chat", "conversationId": conversationId},
+          );
+        }
+      }
+
       return true;
     } catch (e) {
       if (kDebugMode) print("Send Message Error: $e");
@@ -264,9 +299,22 @@ class MongoDatabase {
       int total = 0;
       if (list != null) {
         for (var chat in list) {
-          if (chat['unreadCounts'] != null &&
-              chat['unreadCounts'][email] != null) {
-            total += (chat['unreadCounts'][email] as num).toInt();
+          // Normalize email to handle case sensitivity issues
+          // Try exact match first, then case-insensitive
+
+          if (chat['unreadCounts'] != null) {
+            final unreadMap = chat['unreadCounts'] as Map;
+            // Check direct key first (e.g. user@gmail.com)
+            if (unreadMap.containsKey(email)) {
+              total += (unreadMap[email] as num).toInt();
+            } else {
+              // Fallback: Check lowercase variants if keys are messy
+              unreadMap.forEach((key, value) {
+                if (key.toString().toLowerCase() == email.toLowerCase()) {
+                  total += (value as num).toInt();
+                }
+              });
+            }
           }
         }
       }
@@ -283,11 +331,48 @@ class MongoDatabase {
   ) async {
     try {
       await _ensureConnected();
-      return await userCollection?.findOne(
-        where.eq('email', email).eq('password', password),
+      final normalizedEmail = email.toLowerCase();
+      // Try finding the user
+      var user = await userCollection?.findOne(
+        where.eq('email', normalizedEmail).eq('password', password),
       );
+      return user;
     } catch (e) {
       if (kDebugMode) print("Login Error: $e");
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> loginWithGoogle(
+    String email,
+    String name,
+  ) async {
+    try {
+      await _ensureConnected();
+      final normalizedEmail = email.toLowerCase();
+
+      final existingUser = await userCollection?.findOne(
+        where.eq('email', normalizedEmail),
+      );
+
+      if (existingUser != null) {
+        return existingUser;
+      } else {
+        // Auto-register new user
+        final newUser = {
+          "name": name,
+          "email": normalizedEmail,
+          "password": "", // No password for Google users
+          "college": "Unknown", // User can update this later
+          "joined_date": DateTime.now().toIso8601String(),
+        };
+        await userCollection?.insertOne(newUser);
+        return await userCollection?.findOne(
+          where.eq('email', normalizedEmail),
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) print("Google Login Error: $e");
       return null;
     }
   }
@@ -307,7 +392,7 @@ class MongoDatabase {
 
       await userCollection?.insertOne({
         "name": name,
-        "email": email,
+        "email": email.toLowerCase(),
         "password": password,
         "college": college,
         "joined_date": DateTime.now().toIso8601String(),
@@ -333,6 +418,20 @@ class MongoDatabase {
       return true;
     } catch (e) {
       if (kDebugMode) print("Update Profile Error: $e");
+      return false;
+    }
+  }
+
+  static Future<bool> saveUserToken(String email, String token) async {
+    try {
+      await _ensureConnected();
+      await userCollection?.update(
+        where.eq('email', email.toLowerCase()),
+        modify.set('fcmToken', token),
+      );
+      return true;
+    } catch (e) {
+      if (kDebugMode) print("Save Token Error: $e");
       return false;
     }
   }
@@ -377,6 +476,15 @@ class MongoDatabase {
         "date": DateTime.now().toIso8601String(),
         "pdf_data": pdfData,
       });
+
+      // Send Push Notification to All Users
+      await NotificationService.sendPushNotification(
+        token: '/topics/all_users',
+        title: "New Notice: $source",
+        body: title,
+        data: {"type": "notice"},
+      );
+
       return true;
     } catch (e) {
       if (kDebugMode) print("Upload Error: $e");

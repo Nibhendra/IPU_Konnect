@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../database/mongo_db_service.dart';
+import '../dhundo/constants.dart'; // Import constants
 import 'profile_screen.dart';
 import 'pdf_viewer_screen.dart';
 import 'admin/admin_dashboard.dart';
@@ -24,7 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String userName = "";
   String userEmail = "";
 
-  static const String myAdminEmail = "nibhejeet@gmail.com";
+  // Removed local admin constant in favor of kAdminEmails from constants.dart
 
   @override
   void initState() {
@@ -40,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
       userEmail = prefs.getString('email') ?? "";
     });
 
-    var data = await (userEmail == myAdminEmail
+    var data = await (kAdminEmails.contains(userEmail)
         ? MongoDatabase.getAllNotices()
         : MongoDatabase.getFilteredNotices(userCollege));
 
@@ -244,6 +245,7 @@ class _HomeScreenState extends State<HomeScreen> {
           fontWeight: FontWeight.w600,
           fontSize: 12,
         ),
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
@@ -252,54 +254,37 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
-      floatingActionButton: userEmail == myAdminEmail
-          ? FloatingActionButton(
-              heroTag: 'admin_dashboard',
-              backgroundColor: const Color(0xFF4A00E0),
-              child: const Icon(Icons.dashboard, color: Colors.white),
-              onPressed: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (c) => const AdminDashboardScreen(),
-                  ),
-                );
-                _loadData();
-              },
-            )
-          : FloatingActionButton.extended(
-              heroTag: 'dhundo_portal',
-              backgroundColor: Colors.white,
-              elevation: 5,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DhundoSplashScreen(
-                      userEmail: userEmail,
-                      userName: userName,
-                    ),
-                  ),
-                );
-              },
-              icon: ClipOval(
-                child: Image.asset(
-                  'assets/dhundo_icon.png',
-                  height: 32,
-                  width: 32,
-                  fit: BoxFit.cover,
-                  errorBuilder: (c, o, s) =>
-                      const Icon(Icons.search, color: Colors.orange),
-                ),
-              ),
-              label: Text(
-                "Open Dhundo",
-                style: TextStyle(
-                  color: Colors.deepPurple[800],
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'dhundo_portal',
+        backgroundColor: Colors.white,
+        elevation: 5,
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  DhundoSplashScreen(userEmail: userEmail, userName: userName),
             ),
+          );
+        },
+        icon: ClipOval(
+          child: Image.asset(
+            'assets/dhundo_icon.png',
+            height: 32,
+            width: 32,
+            fit: BoxFit.cover,
+            errorBuilder: (c, o, s) =>
+                const Icon(Icons.search, color: Colors.orange),
+          ),
+        ),
+        label: Text(
+          "Open Dhundo",
+          style: TextStyle(
+            color: Colors.deepPurple[800],
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
       body: Column(
         children: [
           Container(
@@ -374,6 +359,24 @@ class _HomeScreenState extends State<HomeScreen> {
                     _loadData(); // Refresh data on return (in case name/college changed)
                   },
                 ),
+                if (kAdminEmails.contains(userEmail))
+                  IconButton(
+                    tooltip: "Admin Dashboard",
+                    icon: const Icon(
+                      Icons.dashboard_customize,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (c) => const AdminDashboardScreen(),
+                        ),
+                      );
+                      _loadData();
+                    },
+                  ),
               ],
             ),
           ),
@@ -463,7 +466,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildSourceBadge(source),
+                          Flexible(child: _buildSourceBadge(source)),
                           Row(
                             children: [
                               if (hasPdf)
@@ -504,7 +507,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
 
                               // --- ADMIN MENU ICON ---
-                              if (userEmail == myAdminEmail)
+                              if (kAdminEmails.contains(userEmail))
                                 PopupMenuButton<String>(
                                   icon: const Icon(
                                     Icons.more_vert,
@@ -512,12 +515,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                     color: Colors.grey,
                                   ),
                                   onSelected: (val) {
-                                    if (val == 'edit') _showEditDialog(item);
-                                    if (val == 'delete')
+                                    if (val == 'edit') {
+                                      _showEditDialog(item);
+                                    }
+                                    if (val == 'delete') {
                                       _confirmDelete(
                                         item['_id'],
                                         item['title'] ?? "Notice",
                                       );
+                                    }
                                   },
                                   itemBuilder: (context) => [
                                     const PopupMenuItem(

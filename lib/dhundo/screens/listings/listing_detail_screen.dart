@@ -6,6 +6,7 @@ import '../../theme/app_theme.dart';
 import 'add_listing_screen.dart';
 import 'package:ipukonnect/dhundo/screens/full_screen_image_viewer.dart';
 import '../chat/chat_screen.dart';
+import '../../constants.dart';
 
 class ListingDetailScreen extends StatelessWidget {
   final ListingItem listing;
@@ -66,7 +67,7 @@ class ListingDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // Check permissions
     final isOwner = currentUserEmail == listing.sellerEmail;
-    final isAdmin = currentUserEmail == 'admin@dhundo.com';
+    final isAdmin = kAdminEmails.contains(currentUserEmail);
     final hasDeletePermission = isOwner || isAdmin;
 
     return Scaffold(
@@ -206,11 +207,14 @@ class ListingDetailScreen extends StatelessWidget {
                             color: AppTheme.primaryPurple,
                           ),
                           const SizedBox(width: 12),
-                          Text(
-                            listing.meetupSpot,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
+                          Expanded(
+                            child: Text(
+                              listing.meetupSpot,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -219,43 +223,32 @@ class ListingDetailScreen extends StatelessWidget {
                     const SizedBox(height: 32),
 
                     // === DYNAMIC ACTION SECTION ===
-                    if (hasDeletePermission)
-                      // VIEW FOR OWNER OR ADMIN
+                    if (isOwner)
+                      // VIEW FOR OWNER
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: isAdmin ? Colors.red[50] : Colors.green[50],
+                          color: Colors.green[50],
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isAdmin
-                                ? Colors.red.withOpacity(0.5)
-                                : Colors.green.withOpacity(0.5),
+                            color: Colors.green.withOpacity(0.5),
                           ),
                         ),
                         child: Row(
                           children: [
-                            Icon(
-                              isAdmin
-                                  ? Icons.admin_panel_settings
-                                  : Icons.check_circle,
-                              color: isAdmin
-                                  ? Colors.red[800]
-                                  : Colors.green[800],
-                            ),
+                            Icon(Icons.check_circle, color: Colors.green[800]),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    isAdmin
-                                        ? 'ADMIN MODE'
-                                        : 'This is your listing.',
-                                    style: const TextStyle(
+                                  const Text(
+                                    'This is your listing.',
+                                    style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  if (!isAdmin && listing.status == 'active')
+                                  if (listing.status == 'active')
                                     Padding(
                                       padding: const EdgeInsets.only(top: 12.0),
                                       child: Row(
@@ -346,74 +339,105 @@ class ListingDetailScreen extends StatelessWidget {
                         ),
                       )
                     else
-                      // VIEW FOR BUYER
-                      SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            // 1. Create/Get Conversation
-                            final conversation =
-                                await MongoDatabase.createOrGetConversation(
-                                  currentUserEmail,
-                                  listing.sellerEmail,
-                                  listing.title,
-                                );
-
-                            if (conversation != null && context.mounted) {
-                              // 2. Navigate
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ChatScreen(
-                                    conversationId:
-                                        MongoDatabase.objectIdToHexString(
-                                          conversation['_id'],
-                                        ),
-                                    currentUserId: currentUserEmail,
-                                    otherUserName: listing.sellerEmail,
-                                    listingTitle: listing.title,
+                      // VIEW FOR BUYER (AND ADMIN who is not owner)
+                      Column(
+                        children: [
+                          if (isAdmin)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              padding: const EdgeInsets.all(12),
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: Colors.orange[50],
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.orange),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(
+                                    Icons.admin_panel_settings,
+                                    color: Colors.orange,
                                   ),
-                                ),
-                              );
-                            } else {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Could not start chat. Try again.',
+                                  SizedBox(width: 8),
+                                  Text(
+                                    "Admin View: You can contact the seller.",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                );
-                              }
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryPurple,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                                ],
+                              ),
                             ),
-                            elevation: 4,
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.chat_bubble_outline,
-                                color: Colors.white,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Chat to Buy',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                // 1. Create/Get Conversation
+                                final conversation =
+                                    await MongoDatabase.createOrGetConversation(
+                                      currentUserEmail,
+                                      listing.sellerEmail,
+                                      listing.title,
+                                    );
+
+                                if (conversation != null && context.mounted) {
+                                  // 2. Navigate
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ChatScreen(
+                                        conversationId:
+                                            MongoDatabase.objectIdToHexString(
+                                              conversation['_id'],
+                                            ),
+                                        currentUserId: currentUserEmail,
+                                        otherUserName: listing.sellerEmail,
+                                        listingTitle: listing.title,
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Could not start chat. Try again.',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryPurple,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
+                                elevation: 4,
                               ),
-                            ],
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    Icons.chat_bubble_outline,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    isAdmin ? 'Contact Seller' : 'Chat to Buy',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     // === END DYNAMIC SECTION ===
                     const SizedBox(height: 30),

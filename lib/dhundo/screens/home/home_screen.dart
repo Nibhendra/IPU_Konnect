@@ -6,7 +6,9 @@ import '../../../database/mongo_db_service.dart';
 import '../listings/add_listing_screen.dart';
 import '../listings/listing_detail_screen.dart';
 import '../chat/chat_list_screen.dart';
+import '../../services/notification_service.dart';
 import '../../theme/app_theme.dart';
+import '../../constants.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userEmail;
@@ -38,6 +40,15 @@ class _HomeScreenState extends State<HomeScreen> {
     // Refresh unread count every 5 seconds
     _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
       if (mounted) _loadUnreadCount();
+    });
+
+    // Initialize Notifications
+    final notificationService = NotificationService();
+    notificationService.init();
+    notificationService.getToken().then((token) {
+      if (token != null) {
+        MongoDatabase.saveUserToken(widget.userEmail, token);
+      }
     });
   }
 
@@ -112,26 +123,30 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Hello, ${widget.userName.split(' ')[0]} 👋',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Hello, ${widget.userName.split(' ')[0]} 👋',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'BPIT Equipment Exchange',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
-                            fontSize: 14,
+                          const SizedBox(height: 4),
+                          Text(
+                            'BPIT Equipment Exchange',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 14,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     // Icons Row & "Back to IPU Konnect"
                     Row(
@@ -260,21 +275,25 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  AddListingScreen(currentUserEmail: widget.userEmail),
+      floatingActionButton: kAdminEmails.contains(widget.userEmail)
+          ? null
+          : FloatingActionButton(
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        AddListingScreen(currentUserEmail: widget.userEmail),
+                  ),
+                );
+                _loadData(); // Refresh on return
+              },
+              backgroundColor: AppTheme.primaryPurple,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(Icons.add, color: Colors.white),
             ),
-          );
-          _loadData(); // Refresh on return
-        },
-        backgroundColor: AppTheme.primaryPurple,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
     );
   }
 

@@ -69,98 +69,240 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   orElse: () => 'Unknown User',
                 );
 
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                return Dismissible(
+                  key: Key(MongoDatabase.objectIdToHexString(chat['_id'])),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.delete, color: Colors.white),
                   ),
-                  child: ListTile(
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (ctx) => ChatScreen(
-                            conversationId: MongoDatabase.objectIdToHexString(
-                              chat['_id'],
-                            ),
-                            currentUserId: widget.currentUserEmail,
-                            otherUserName: otherUser,
-                            listingTitle: chat['listingTitle'] ?? 'Item',
+                  confirmDismiss: (direction) async {
+                    return await showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Delete Chat?'),
+                        content: const Text(
+                          'This will permanently delete the conversation and its history.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancel'),
                           ),
-                        ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text(
+                              'Delete',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  onDismissed: (direction) async {
+                    // Temporarily remove from list for instant feedback
+                    final removedChat = chat;
+                    setState(() {
+                      conversations.removeAt(index);
+                    });
+
+                    bool success = await MongoDatabase.deleteConversation(
+                      MongoDatabase.objectIdToHexString(chat['_id']),
+                    );
+
+                    if (!mounted) return;
+
+                    if (!success) {
+                      // Revert if failed
+                      setState(() {
+                        conversations.insert(index, removedChat);
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Failed to delete chat")),
                       );
-                      _loadConversations(); // Refresh on return
-                    },
-                    leading: CircleAvatar(
-                      backgroundColor: AppTheme.secondaryPurple.withOpacity(
-                        0.2,
-                      ),
-                      child: Text(
-                        otherUser[0].toUpperCase(),
-                        style: const TextStyle(
-                          color: AppTheme.primaryPurple,
-                          fontWeight: FontWeight.bold,
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Chat deleted")),
+                      );
+                    }
+                  },
+                  child: Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ListTile(
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (ctx) => ChatScreen(
+                              conversationId: MongoDatabase.objectIdToHexString(
+                                chat['_id'],
+                              ),
+                              currentUserId: widget.currentUserEmail,
+                              otherUserName: otherUser,
+                              listingTitle: chat['listingTitle'] ?? 'Item',
+                            ),
+                          ),
+                        );
+                        _loadConversations(); // Refresh on return
+                      },
+                      leading: CircleAvatar(
+                        backgroundColor: AppTheme.secondaryPurple.withOpacity(
+                          0.2,
                         ),
-                      ),
-                    ),
-                    title: Text(
-                      otherUser,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          chat['listingTitle'] ?? 'Listing Inquiry',
+                        child: Text(
+                          otherUser[0].toUpperCase(),
                           style: const TextStyle(
-                            fontSize: 12,
                             color: AppTheme.primaryPurple,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        Text(
-                          chat['lastMessage'] ?? '...',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          _formatTime(chat['lastMessageTime']),
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        if ((chat['unreadCounts'] != null) &&
-                            (chat['unreadCounts'][widget.currentUserEmail] ??
-                                    0) >
-                                0)
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
+                      ),
+                      title: Row(
+                        children: [
+                          Expanded(
                             child: Text(
-                              (chat['unreadCounts'][widget.currentUserEmail] ??
-                                      0)
-                                  .toString(),
+                              otherUser,
                               style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
                                 fontWeight: FontWeight.bold,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                      ],
+                          const SizedBox(width: 8),
+                          Text(
+                            _formatTime(chat['lastMessageTime']),
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            chat['listingTitle'] ?? 'Listing Inquiry',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.primaryPurple,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            chat['lastMessage'] ?? '...',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if ((chat['unreadCounts'] != null) &&
+                              (chat['unreadCounts'][widget.currentUserEmail] ??
+                                      0) >
+                                  0)
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                (chat['unreadCounts'][widget
+                                            .currentUserEmail] ??
+                                        0)
+                                    .toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          IconButton(
+                            constraints: const BoxConstraints(),
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.redAccent,
+                              size: 20,
+                            ),
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Delete Chat?'),
+                                  content: const Text(
+                                    'This will permanently delete the conversation.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      child: const Text(
+                                        'Delete',
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ).then((confirmed) async {
+                                if (confirmed == true) {
+                                  final removedChat = chat;
+                                  setState(() {
+                                    conversations.removeAt(index);
+                                  });
+
+                                  bool success =
+                                      await MongoDatabase.deleteConversation(
+                                        MongoDatabase.objectIdToHexString(
+                                          chat['_id'],
+                                        ),
+                                      );
+
+                                  if (!mounted) return;
+
+                                  if (!success) {
+                                    setState(() {
+                                      conversations.insert(index, removedChat);
+                                    });
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text("Failed to delete chat"),
+                                      ),
+                                    );
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text("Chat deleted"),
+                                      ),
+                                    );
+                                  }
+                                }
+                              });
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );

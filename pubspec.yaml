@@ -22,6 +22,11 @@ dependencies:
   flutter_dotenv: ^5.1.0
   # Keep dotted_border only if you fixed the Admin Screen code
   dotted_border: ^3.1.0
+  firebase_core: ^4.3.0
+  firebase_messaging: ^16.1.0
+  http: ^1.6.0
+  google_sign_in: ^6.2.1
+  firebase_auth: ^6.1.3
 
 dev_dependencies:
   flutter_test:
